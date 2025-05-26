@@ -22,7 +22,7 @@ module.exports = {
       audience: "https://yourdomain.com",
       issuer: "feathers",
       algorithm: "HS256",
-      expiresIn: "1d",
+      expiresIn: "30s",
     },
     local: {
       usernameField: "email",
@@ -43,5 +43,7 @@ module.exports = {
       },
     },
   },
+  refresh_secret: "jE+z2uQ6zFAhiQVNQqqHr27eZrM=",
+
   mysql: `${DB_DIALECT}://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}`,
 };

@@ -43,6 +43,11 @@ module.exports = function (app) {
   users.associate = function (models) {
     // Define associations here
     // See https://sequelize.org/master/manual/assocs.html
+     users.hasMany(models.refresh_token, {
+      foreignKey: 'uid',  // foreign key di tabel refresh_token
+      sourceKey: 'uid',   // primary key di tabel users
+      as: 'refresh_token' // alias relasi
+    });
   };
 
   return users;

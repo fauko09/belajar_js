@@ -72,7 +72,7 @@ module.exports = function (app) {
     });
 
     // Sync to the database
-    if (DB_SYNC === 'true') {
+    if (DB_SYNC === 'false') {
       try {
         app.set(
           'sequelizeSync',
