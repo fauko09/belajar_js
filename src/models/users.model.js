@@ -48,6 +48,16 @@ module.exports = function (app) {
       sourceKey: 'uid',   // primary key di tabel users
       as: 'refresh_token' // alias relasi
     });
+     users.hasMany(models.account_bank, {
+      foreignKey: 'uid',  // foreign key di tabel refresh_token
+      sourceKey: 'uid',   // primary key di tabel users
+      as: 'account_bank' // alias relasi
+    });
+     users.hasMany(models.balance, {
+      foreignKey: 'uid',  // foreign key di tabel refresh_token
+      sourceKey: 'uid',   // primary key di tabel users
+      as: 'balance' // alias relasi
+    });
   };
 
   return users;

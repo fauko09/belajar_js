@@ -2,18 +2,24 @@
 const { Users } = require('./users.class');
 const createModel = require('../../models/users.model');
 const hooks = require('./users.hooks');
+const express = require('@feathersjs/express');
+const feathers = require('@feathersjs/feathers');
+const multer = require('multer');
 
 module.exports = function (app) {
-  const options = {
+  const upload = multer();
+
+  // Middleware parsing JSON dan urlencoded harus dipasang di app utama
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+
+  // Pasang multer middleware pada route /users untuk parsing form-data tanpa file
+  app.use('/users', upload.none(), new Users({
     Model: createModel(app),
     paginate: app.get('paginate')
-  };
+  }, app));
 
-  // Initialize our service with any options it requires
-  app.use('/users', new Users(options, app));
-
-  // Get our initialized service so that we can register hooks
+  // Ambil service users untuk mendaftarkan hooks
   const service = app.service('users');
-
   service.hooks(hooks);
 };

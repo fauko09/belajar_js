@@ -5,8 +5,8 @@ const DataTypes = Sequelize.DataTypes
 
 module.exports = function (app) {
   const sequelizeClient = app.get('sequelizeClient')
-  const refreshToken = sequelizeClient.define(
-    'refresh_token',
+  const balance = sequelizeClient.define(
+    'balance',
     {
       uid: {
         type: DataTypes.UUID,
@@ -14,20 +14,10 @@ module.exports = function (app) {
         allowNull: false,
         unique: true
       },
-      token: {
-        type: DataTypes.TEXT,
-        allowNull: false,
-        unique: true
+      saldo: {
+        type: DataTypes.DOUBLE,
+        allowNull: false
       },
-     
-      expired: {
-        type: DataTypes.DATE,
-        allowNull: false,
-        unique: true
-      },
-   
-
-
     },
     {
       hooks: {
@@ -39,15 +29,15 @@ module.exports = function (app) {
   )
 
   // eslint-disable-next-line no-unused-vars
-  refreshToken.associate = function (models) {
+  balance.associate = function (models) {
     // Define associations here
     // See https://sequelize.org/master/manual/assocs.html
-    refreshToken.belongsTo(models.users, {
+    balance.belongsTo(models.users, {
       foreignKey: 'uid', // foreign key di tabel refresh_token
       targetKey: 'uid', // primary key di tabel users
       as: 'user' // alias relasi
     })
   }
 
-  return refreshToken
+  return balance
 }

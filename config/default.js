@@ -22,7 +22,7 @@ module.exports = {
       audience: "https://yourdomain.com",
       issuer: "feathers",
       algorithm: "HS256",
-      expiresIn: "30s",
+      expiresIn: "1d",
     },
     local: {
       usernameField: "email",
