@@ -27,6 +27,7 @@ class customJWT extends JWTStrategy {
     const tokenRecord = await refreshModel.findOne({
       where: { token: payload.accessToken }
     })
+    
     if (tokenRecord === null) {
       
       throw new NotAuthenticated('Token not found') // <-- penting: throw error

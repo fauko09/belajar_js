@@ -63,21 +63,43 @@ const deleteUser = () => {
 
 const createUser = () => {
   return async (context) => {
-    const userModel = app.get('sequelizeClient').models.users
-    const user = await userModel;
-    user.create({
+    const userModel = context.app.get('sequelizeClient').models.users
+    const user = await userModel
+    console.log('cek context', context.data)
+
+    const checkUser = await user.findOne({
+      where: {
+        email: context.data.email
+      }
+    })
+
+    if (checkUser != null) {
+      console.log('user terdaftar ', user)
+
+      context.result = {
+        status: 400,
+        message: 'email already exist'
+      }
+      return context
+    }
+
+    await user.create({
+      nama: context.data.nama,
       email: context.data.email,
-      password: context.data.password,
-      nama: context.data.nama.totrim()
+      password: context.data.password
+    })
+    const data = await user.findOne({
+      where: {
+        email: context.data.email
+      }
     })
     context.result = {
       status: 200,
       message: 'success create user',
       data: {
-        user_id: user.uid,
-        nama: user.nama,
-        email: user.email,
-        password: user.password
+        user_id: data.uid,
+        nama: data.nama,
+        email: data.email,
       }
     }
     return context
@@ -89,7 +111,7 @@ module.exports = {
     all: [],
     find: [authenticate('jwt')],
     get: [authenticate('jwt')],
-    create: [hashPassword('password')],
+    create: [hashPassword('password'), createUser()],
     update: [hashPassword('password'), authenticate('jwt'), editUser()],
     patch: [hashPassword('password'), authenticate('jwt'), editUser()],
     remove: [authenticate('jwt'), deleteUser()]
