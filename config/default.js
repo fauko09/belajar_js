@@ -44,7 +44,6 @@ module.exports = {
     },
   },
   refresh_secret: "jE+z2uQ6zFAhiQVNQqqHr27eZrM=",
-  midtrans_key: "Mid-server-Y76t93n5wyXI8Fi-qqB-HB9t",
-  midtrans_dis: "IRIS-09a990ef-37c5-4f11-a393-3704c5045cde",
+
   mysql: `${DB_DIALECT}://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}`,
 };
