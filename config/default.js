@@ -44,6 +44,7 @@ module.exports = {
     },
   },
   refresh_secret: "jE+z2uQ6zFAhiQVNQqqHr27eZrM=",
-
+  midtrans_key: `${MIDTRANSKEY}`,
+  midtrans_dis: `${MIDTRANSDIS}`,
   mysql: `${DB_DIALECT}://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}`,
 };
