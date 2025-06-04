@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { HOST, PORT, DB_DIALECT, DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME } =
+const { HOST, PORT, DB_DIALECT, DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME , MIDTRANSKEY , MIDTRANSDIS } =
   process.env;
 
 module.exports = {

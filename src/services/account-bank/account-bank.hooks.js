@@ -1,5 +1,6 @@
 const { authenticate } = require('@feathersjs/authentication').hooks
 const jwt = require('jsonwebtoken')
+const axios = require('axios')
 
 function getUidFromToken(token) {
   try {
@@ -27,24 +28,42 @@ const createAccountBank = () => {
     // if (isBank == null) {
     //   throw new Error('account bank tidak valid')
     // }
-    const accountBank = await accountBankModel.create({
+   
+    const user = await context.app.get('sequelizeClient').models.users.findOne({ where: { uid: getUid } })
+
+    dataBody = {
+      name: user.nama,
+      account: parseInt(context.data.account),
+      bank: context.data.bank,
+      alias_name: user.nama,
+      email: user.email
+    }
+
+    const regisBanker = await regisBankIRIS(context, dataBody)
+      const accountBank = await accountBankModel.create({
       nama_bank: context.data.bank,
       account: context.data.account,
       uid: getUid
     })
-    const balanceModel =  context.app.get('sequelizeClient').models.balance
+    const balanceModel = context.app.get('sequelizeClient').models.balance
+    const balanceChek = await balanceModel.findOne({ where: { uid: getUid } })
+    let balance
+    if (balanceChek == null) {
+      balance = await balanceModel.create({
+        saldo: 0.0,
+        uid: getUid
+      })
+    } else {
+      balance = await balanceModel.findOne({ where: { uid: getUid } })
+    }
 
-    const balance = await balanceModel.create({
-      saldo: 0.0,
-      uid: getUid
-    })
-    
     context.result = {
       status: 200,
       message: 'success',
       validasi: false,
       ballance: balance.saldo,
-      data: accountBank
+      data: accountBank,
+      // regisBank: regisBanker
     }
     return context
   }
@@ -117,6 +136,35 @@ const getAccountBankUID = () => {
   }
 }
 
+async function regisBankIRIS(context, dataBody) {
+  const username = context.app.get('midtrans_dis')
+  const basicAuth = Buffer.from(`${username}:`).toString('base64')
+  console.log('basic auth', basicAuth)
+  console.log('basic auth username', username)
+
+  const url = `https://app.midtrans.com/iris/api/v1/beneficiaries/`
+  console.log('url validasi bank', url)
+  console.log("body", dataBody);
+  try {
+    
+    const response = await axios.post(url, JSON.stringify(dataBody), {
+      headers: {
+        Authorization: `Basic ${basicAuth}`,
+        // Accept: 'application/json',
+        'Content-Type': 'application/json'
+      }
+    })
+  
+    console.log('data regis Iris bank ', response.statusText)
+    const data = await response.data()
+  
+    return data
+  } catch (error) {
+    console.log('error', error);
+    
+  }
+}
+
 // async function validasiBank(app, bank, account) {
 //   const username = app.get('midtrans_dis')
 //   const basicAuth = Buffer.from(`${username}:`).toString('base64')
@@ -142,8 +190,8 @@ module.exports = {
     find: [getAccountBankUID()],
     get: [],
     create: [createAccountBank()],
-    update: [editAccountBank()],
-    patch: [editAccountBank()],
+    // update: [editAccountBank()],
+    // patch: [editAccountBank()],
     remove: [deleteBank()]
   },
 
