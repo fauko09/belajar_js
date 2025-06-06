@@ -4,16 +4,21 @@ const { expressOauth } = require('@feathersjs/authentication-oauth')
 
 const authenticationHooks = require('./authentication.hooks') // pastikan path benar
 const { NotAuthenticated } = require('@feathersjs/errors')
-const { Email } = require('read-excel-file')
-
+const express = require('@feathersjs/express');
+const multer = require('multer');
 module.exports = (app) => {
+  const upload = multer();
+
+  // Middleware parsing JSON dan urlencoded harus dipasang di app utama
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
   const authentication = new AuthenticationService(app)
 
   authentication.register('jwt', new customJWT())
   // authentication.register('jwt', new JWTStrategy())
   authentication.register('local', new LocalStrategy())
 
-  app.use('/authentication', authentication)
+  app.use('/authentication', upload.none(), authentication)
   app.configure(expressOauth())
 
   // Pasang hooks
@@ -27,19 +32,25 @@ class customJWT extends JWTStrategy {
     const tokenRecord = await refreshModel.findOne({
       where: { token: payload.accessToken }
     })
-    
+
     if (tokenRecord === null) {
-      
+
       throw new NotAuthenticated('Token not found') // <-- penting: throw error
     } else {
       const now = new Date(Date.now())
       const expiredDate = new Date(tokenRecord.expired)
-      if (
-        now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }) >
-        expiredDate.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' })
-      ) {
-        throw new NotAuthenticated('Token is expired') // <-- penting: throw error
-      } else {
+
+      // if (
+      //   now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }) >
+      //   expiredDate.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' })
+      // ) {
+      //   throw new NotAuthenticated('Token is expired') // <-- penting: throw error
+      // }
+      if (now.getTime() > expiredDate.getTime()) {
+        throw new NotAuthenticated('Token is expired')
+      }
+
+      else {
         return payload
       }
     }

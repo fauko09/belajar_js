@@ -1,6 +1,7 @@
 const { authenticate } = require('@feathersjs/authentication').hooks
 const jwt = require('jsonwebtoken')
 const axios = require('axios')
+const { json } = require('sequelize')
 
 function getUidFromToken(token) {
   try {
@@ -17,55 +18,123 @@ const createAccountBank = () => {
     if (getUid == null) {
       throw new Error('Invalid or revoked token')
     }
-    console.log('context account bank', getUid)
-    const accountBankModel = context.app.get('sequelizeClient').models.account_bank
-    console.log('data input account bank', context.data)
-    const checkAccount = await accountBankModel.findOne({ where: { uid: getUid } }) //tableAccount
-    if (checkAccount != null) {
-      throw new Error('account bank sudah ada')
-    }
-    // const isBank = await validasiBank(context.app, context.data.bank, context.data.account)
-    // if (isBank == null) {
-    //   throw new Error('account bank tidak valid')
-    // }
-   
-    const user = await context.app.get('sequelizeClient').models.users.findOne({ where: { uid: getUid } })
+    try {
 
-    dataBody = {
-      name: user.nama,
-      account: parseInt(context.data.account),
-      bank: context.data.bank,
-      alias_name: user.nama + ' - ' + user.uid,
-      email: user.email
-    }
+      console.log('context account bank', getUid)
+      const accountBankModel = context.app.get('sequelizeClient').models.account_bank
+      console.log('data input account bank', context.data)
+      const checkAccount = await accountBankModel.findOne({ where: { uid: getUid } }) //tableAccount
+      if (checkAccount != null) {
+        throw new Error('account bank sudah ada')
+      }
+      // const isBank = await validasiBank(context.app, context.data.bank, context.data.account)
+      // if (isBank == null) {
+      //   throw new Error('account bank tidak valid')
+      // }
 
-    const regisBanker = await regisBankIRIS(context, dataBody)
-    //   const accountBank = await accountBankModel.create({
-    //   nama_bank: context.data.bank,
-    //   account: context.data.account,
-    //   uid: getUid
-    // })
-    // const balanceModel = context.app.get('sequelizeClient').models.balance
-    // const balanceChek = await balanceModel.findOne({ where: { uid: getUid } })
-    // let balance
-    // if (balanceChek == null) {
-    //   balance = await balanceModel.create({
-    //     saldo: 0.0,
-    //     uid: getUid
-    //   })
-    // } else {
-    //   balance = await balanceModel.findOne({ where: { uid: getUid } })
-    // }
+      const user = await context.app.get('sequelizeClient').models.users.findOne({ where: { uid: getUid } })
 
-    context.result = {
-      status: 200,
-      message: 'success',
-      validasi: false,
-      // ballance: balance.saldo,
-      // data: accountBank,
-      // regisBank: regisBanker
+      dataBody = {
+        name: user.nama,
+        account: context.data.account,
+        bank: context.data.bank,
+        alias_name: context.data.account,
+        email: user.email
+      }
+
+      const regisBanker = await regisBankIRIS(context, dataBody)
+      if (regisBankIRIS == "error") {
+        throw new Error('account bank tidak valid')
+      }
+      const accountBank = await accountBankModel.create({
+        nama_bank: context.data.bank,
+        account: context.data.account,
+        uid: getUid
+      })
+      const balanceModel = context.app.get('sequelizeClient').models.balance
+      const balanceChek = await balanceModel.findOne({ where: { uid: getUid } })
+      let balance
+      if (balanceChek == null) {
+        balance = await balanceModel.create({
+          saldo: 0.0,
+          uid: getUid
+        })
+      } else {
+        balance = await balanceModel.findOne({ where: { uid: getUid } })
+      }
+
+      context.result = {
+        status: 201,
+        message: 'success',
+        validasi: false,
+        ballance: balance.saldo,
+        data: {
+          uid: accountBank.uid,
+          bank: accountBank.nama_bank,
+          account: accountBank.account,
+          status_iris: regisBanker.status === "created" ? true : false
+        },
+      }
+      return context
+    } catch (error) {
+      return {
+        status: 400,
+        message: error.message
+      }
     }
-    return context
+  }
+}
+
+async function regisBankIRIS(context, dataBody) {
+  const username = context.app.get('midtrans_dis')
+  const basicAuth = Buffer.from(`${username}:`).toString('base64')
+  const url = 'https://app.midtrans.com/iris/api/v1/beneficiaries'
+  console.log('url validasi bank', url, basicAuth, username)
+  console.log("body", JSON.parse(JSON.stringify(dataBody)));
+  try {
+    const response = await axios.post(url, JSON.parse(JSON.stringify(dataBody)), {
+      headers: {
+        Accept: 'application/json',
+        setContentType: 'application/json',
+        Authorization: ''
+      },
+      auth: {
+        username: username,
+        password: ''
+      },
+      params: {
+        "": ""
+      }
+    })
+    if (response.status != 201 || response.status != 200) {
+      console.log('data regis Iris bank ', response.data)
+      return response.data
+    } else {
+      return "error"
+    }
+  } catch (error) {
+    return "error"
+    console.log('eror regis iris', error);
+
+  }
+}
+
+
+async function getBankIRIS(context) {
+  const username = context.app.get('midtrans_dis')
+  const basicAuth = Buffer.from(`${username}:`).toString('base64')
+  const url = 'https://app.midtrans.com/iris//api/v1/beneficiaries'
+  const respone = await axios.get(url, {
+    headers: {
+      Authorization: `Basic ${basicAuth}`,
+      Accept: 'application/json'
+    }
+  })
+  if (respone.status != 201 || respone.status != 200) {
+    console.log('data regis Iris bank ', respone.data);
+    return respone.data
+  } else {
+    return "erorr"
   }
 }
 
@@ -135,54 +204,7 @@ const getAccountBankUID = () => {
     }
   }
 }
-async function getBankIRIS(context) {
-  const username = context.app.get('midtrans_dis')
-  const basicAuth = Buffer.from(`${username}:`).toString('base64')
-  const url = 'https://app.midtrans.com/iris/api/v1/beneficiaries/'
-  const respone = await axios.get(url, {
-    headers: {
-      Authorization: `Basic ${basicAuth}`,
-      Accept: 'application/json'
-    }
-  })
-  console.log('data regis Iris bank ', respone);
-  return respone
-}
 
-async function regisBankIRIS(context, dataBody) {
-  const username = context.app.get('midtrans_dis')
-  const basicAuth = Buffer.from(`${username}:`).toString('base64')
-  console.log('basic auth', basicAuth)
-  console.log('basic auth username', username)
-
-  const url = 'https://app.midtrans.com/iris/api/v1/beneficiaries'
-  console.log('url validasi bank', url, basicAuth, username)
-  console.log("body", dataBody);
-  try {
-    
-    const response = await axios.post(url, dataBody, {
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json'
-      },
-      auth: {
-        username: username,
-        password: ''
-      },
-      params: {
-        "?=":""
-      }
-    })
-  
-    console.log('data regis Iris bank ', response)
-  
-  
-    return response
-  } catch (error) {
-    console.log('coba dong', error);
-    
-  }
-}
 
 // async function validasiBank(app, bank, account) {
 //   const username = app.get('midtrans_dis')

@@ -1,5 +1,7 @@
 const { authenticate } = require('@feathersjs/authentication').hooks
 const jwt = require('jsonwebtoken')
+const balanceModel = require('../../models/balance.model')
+const sendMail = require('../sendmail')
 
 function getUidFromToken(token) {
   try {
@@ -22,7 +24,10 @@ getBalanceByID = () => async (context) => {
   context.result = {
     status: 200,
     message: 'success',
-    data: balance
+    data: {
+      uid: balance.uid,
+      saldo: balance.saldo,
+    }
   }
   return context
 }
@@ -69,12 +74,29 @@ const upadeteBalance = () => async (context) => {
 }
 
 async function createHistory(app, body) {
-  const historyModel = app.get('sequelizeClient').models.hisTransaksi
-  await historyModel.create({body})
+  const sequelize = app.get('sequelizeClient');
+  if (!sequelize || !sequelize.models.his_transaksi) {
+    throw new Error('Model hisTransaksi tidak ditemukan');
+  }
+
+  const historyModel = sequelize.models.his_transaksi;
+  await historyModel.create(body); // HANYA body, bukan {body}
 }
-async function updateHistory(app, body) {
-  const historyModel = app.get('sequelizeClient').models.hisTransaksi
-  await historyModel.update(body, { where: { total: null, status: null } })
+async function updateHistory(app, body, uid) {
+  const sequelize = app.get('sequelizeClient');
+  if (!sequelize || !sequelize.models.his_transaksi) {
+    throw new Error('Model hisTransaksi tidak ditemukan');
+  }
+  const historyModel = sequelize.models.his_transaksi;
+  await historyModel.update(body, { where: { uid: uid, status: null } });
+}
+
+function formatIDR(number) {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0
+  }).format(number);
 }
 
 async function getStatusTopUp(context) {
@@ -83,7 +105,10 @@ async function getStatusTopUp(context) {
   const basicAuth = Buffer.from(`${username}:`).toString('base64')
   const url = `https://api.midtrans.com/v2/${context.id}/status`
   console.log('url get status topup', url)
-
+  const getUid = getUidFromToken(context.params.authentication.accessToken)
+  if (getUid == null) {
+    throw new Error('Invalid or revoked token')
+  }
   const options = {
     method: 'GET',
     headers: {
@@ -97,16 +122,129 @@ async function getStatusTopUp(context) {
     .then(async (res) => {
       dataRes = await res.json()
       console.log('data get status topup', dataRes)
-      if (dataRes.transaction_status != 'expired') {
-        await updateHistory(app, {
-          total: dataRes.gross_amount,
-          status: dataRes.transaction_status
-        })
+      const sequelize = context.app.get('sequelizeClient');
+      if (!sequelize || !sequelize.models.balance) {
+        throw new Error('Model ballance tidak ditemukan');
       }
+
+      const balanceModel = sequelize.models.balance;
+      try {
+        const saldo = await balanceModel.findOne({ where: { uid: getUid } })
+        const newSaldo = parseInt(saldo.saldo) + parseInt(dataRes.gross_amount)
+        const user = await context.app.get('sequelizeClient').models.users.findOne({ where: { uid: getUid } })
+        console.log('new saldo', dataRes.transaction_status == 'settlement' && parseInt(saldo.saldo) < newSaldo);
+        switch (dataRes.transaction_status) {
+          case 'settlement':
+            console.log('new saldo', newSaldo);
+            const transaksi = await context.app.get('sequelizeClient').models.his_transaksi.findOne({
+              where: {
+                his_id: dataRes.order_id,
+                status: 'settlement'
+              }
+            });
+
+            if (transaksi) {
+              console.log("Transaksi sudah pernah diproses, skip top up");
+              return context.result = {
+                status: 200,
+                message: 'done top up',
+              }
+            }
+            if (parseInt(saldo.saldo) < newSaldo) {
+              await sendMail({
+                to: user.email,
+                subject: 'Topup berhasil',
+                text: 'Topup berhasil',
+                html: `
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Top Up Berhasil</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f2f8f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+
+    .card {
+      background-color: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+
+    .card h1 {
+      color: #2e7d32;
+      margin-bottom: 20px;
+    }
+
+    .card p {
+      font-size: 18px;
+      margin: 8px 0;
+    }
+
+    .amount {
+      font-weight: bold;
+      color: #0277bd;
+    }
+
+    .balance {
+      font-weight: bold;
+      color: #388e3c;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Top Up Berhasil 🎉</h1>
+    <p>Jumlah Top Up: <span class="amount">Rp ${formatIDR(dataRes.gross_amount)}</span></p>
+    <p>Saldo Terakhir: <span class="balance">Rp ${formatIDR(newSaldo)}</span></p>
+  </div>
+</body>
+</html>
+`
+              })
+              await balanceModel.update({ saldo: newSaldo }, { where: { uid: getUid } })
+              await updateHistory(context.app, {
+                total: dataRes.gross_amount,
+                status: dataRes.transaction_status
+              }, getUid)
+            }
+
+            break;
+          case 'expired':
+            await updateHistory(context.app, {
+              total: dataRes.gross_amount,
+              status: dataRes.transaction_status,
+            }, getUid)
+            break;
+          default:
+            break;
+        }
+
+      } catch (error) {
+        console.log('error get status topup', error);
+        throw new Error("error get status topup");
+      }
+      updatesaldo = await balanceModel.findOne({ where: { uid: getUid } })
       context.result = {
         status: 200,
         message: 'success',
-        data: dataRes
+        data: {
+          saldo: updatesaldo.saldo,
+          order_id: dataRes.order_id,
+          transaction_id: dataRes.transaction_id,
+          transaction_status: dataRes.transaction_status,
+          gross_amount: dataRes.gross_amount,
+          status_message: dataRes.status_message,
+          payment_type: dataRes.payment_type,
+        }
       }
     })
     .then((json) => console.log(json))
@@ -147,7 +285,9 @@ async function topUpBallance(context) {
       const dataRes = await res.json()
       await createHistory(context.app, {
         uid: getUid,
-        his_id: dataRes.order_id
+        his_id: dataRes.order_id,
+        total: data.saldo,
+        tipe: 'kredit'
       })
       context.result = {
         status_code: dataRes.status_code,

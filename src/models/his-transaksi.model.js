@@ -16,7 +16,6 @@ module.exports = function (app) {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
         allowNull: false,
-        unique: true
       },
       tipe: {
         type: DataTypes.ENUM('debit', 'kredit'),
@@ -28,7 +27,7 @@ module.exports = function (app) {
       },
       status: {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: true
       }
     },
     {
