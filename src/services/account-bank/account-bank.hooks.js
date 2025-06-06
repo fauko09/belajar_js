@@ -35,34 +35,34 @@ const createAccountBank = () => {
       name: user.nama,
       account: parseInt(context.data.account),
       bank: context.data.bank,
-      alias_name: user.nama,
+      alias_name: user.nama + ' - ' + user.uid,
       email: user.email
     }
 
     const regisBanker = await regisBankIRIS(context, dataBody)
-      const accountBank = await accountBankModel.create({
-      nama_bank: context.data.bank,
-      account: context.data.account,
-      uid: getUid
-    })
-    const balanceModel = context.app.get('sequelizeClient').models.balance
-    const balanceChek = await balanceModel.findOne({ where: { uid: getUid } })
-    let balance
-    if (balanceChek == null) {
-      balance = await balanceModel.create({
-        saldo: 0.0,
-        uid: getUid
-      })
-    } else {
-      balance = await balanceModel.findOne({ where: { uid: getUid } })
-    }
+    //   const accountBank = await accountBankModel.create({
+    //   nama_bank: context.data.bank,
+    //   account: context.data.account,
+    //   uid: getUid
+    // })
+    // const balanceModel = context.app.get('sequelizeClient').models.balance
+    // const balanceChek = await balanceModel.findOne({ where: { uid: getUid } })
+    // let balance
+    // if (balanceChek == null) {
+    //   balance = await balanceModel.create({
+    //     saldo: 0.0,
+    //     uid: getUid
+    //   })
+    // } else {
+    //   balance = await balanceModel.findOne({ where: { uid: getUid } })
+    // }
 
     context.result = {
       status: 200,
       message: 'success',
       validasi: false,
-      ballance: balance.saldo,
-      data: accountBank,
+      // ballance: balance.saldo,
+      // data: accountBank,
       // regisBank: regisBanker
     }
     return context
@@ -119,7 +119,7 @@ const getAccountBankUID = () => {
       throw new Error('Invalid or revoked token')
     }
     console.log('context account asdasd', context.params.query)
-
+    await getBankIRIS(context);
     const accountBankModel = context.app.get('sequelizeClient').models.account_bank
     if (context.params.query.by === 'id') {
       delete context.params.query.by
@@ -135,6 +135,19 @@ const getAccountBankUID = () => {
     }
   }
 }
+async function getBankIRIS(context) {
+  const username = context.app.get('midtrans_dis')
+  const basicAuth = Buffer.from(`${username}:`).toString('base64')
+  const url = 'https://app.midtrans.com/iris/api/v1/beneficiaries/'
+  const respone = await axios.get(url, {
+    headers: {
+      Authorization: `Basic ${basicAuth}`,
+      Accept: 'application/json'
+    }
+  })
+  console.log('data regis Iris bank ', respone);
+  return respone
+}
 
 async function regisBankIRIS(context, dataBody) {
   const username = context.app.get('midtrans_dis')
@@ -142,25 +155,31 @@ async function regisBankIRIS(context, dataBody) {
   console.log('basic auth', basicAuth)
   console.log('basic auth username', username)
 
-  const url = `https://app.midtrans.com/iris/api/v1/beneficiaries/`
-  console.log('url validasi bank', url)
+  const url = 'https://app.midtrans.com/iris/api/v1/beneficiaries'
+  console.log('url validasi bank', url, basicAuth, username)
   console.log("body", dataBody);
   try {
     
-    const response = await axios.post(url, JSON.stringify(dataBody), {
+    const response = await axios.post(url, dataBody, {
       headers: {
-        Authorization: `Basic ${basicAuth}`,
-        // Accept: 'application/json',
+        Accept: 'application/json',
         'Content-Type': 'application/json'
+      },
+      auth: {
+        username: username,
+        password: ''
+      },
+      params: {
+        "?=":""
       }
     })
   
-    console.log('data regis Iris bank ', response.statusText)
-    const data = await response.data()
+    console.log('data regis Iris bank ', response)
   
-    return data
+  
+    return response
   } catch (error) {
-    console.log('error', error);
+    console.log('coba dong', error);
     
   }
 }
