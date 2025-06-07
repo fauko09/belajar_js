@@ -149,8 +149,7 @@ async function getStatusTopUp(context) {
                 status: 200,
                 message: 'done top up',
               }
-            }
-            if (parseInt(saldo.saldo) < newSaldo) {
+            } else{
               await sendMail({
                 to: user.email,
                 subject: 'Topup berhasil',
@@ -203,8 +202,10 @@ async function getStatusTopUp(context) {
 <body>
   <div class="card">
     <h1>Top Up Berhasil 🎉</h1>
-    <p>Jumlah Top Up: <span class="amount">Rp ${formatIDR(dataRes.gross_amount)}</span></p>
-    <p>Saldo Terakhir: <span class="balance">Rp ${formatIDR(newSaldo)}</span></p>
+    <p>Terima kasih telah melakukan top up.</p>
+    <p>Top Up Berhasil, Saldo anda telah bertambah.</p>
+    <p>Jumlah Top Up: <span class="amount">${formatIDR(dataRes.gross_amount)}</span></p>
+    <p>Saldo Terakhir: <span class="balance">${formatIDR(newSaldo)}</span></p>
   </div>
 </body>
 </html>
@@ -312,7 +313,7 @@ module.exports = {
     find: [getBalanceByID()],
     get: [getStatusTopUp],
     create: [topUpBallance],
-    update: [upadeteBalance()]
+    // update: [upadeteBalance()]
     // patch: [upadeteBalance()]
     // remove: []
   },

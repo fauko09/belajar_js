@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { HOST, PORT, DB_DIALECT, DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME , MIDTRANSKEY , MIDTRANSDIS } =
+const { HOST, PORT, DB_DIALECT, DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME , MIDTRANSKEY , MIDTRANSDIS ,MIDTRANSDISPAY} =
   process.env;
 
 module.exports = {
@@ -46,5 +46,6 @@ module.exports = {
   refresh_secret: "jE+z2uQ6zFAhiQVNQqqHr27eZrM=",
   midtrans_key: `${MIDTRANSKEY}`,
   midtrans_dis: `${MIDTRANSDIS}`,
+  midtrans_dis_pay: `${MIDTRANSDISPAY}`,
   mysql: `${DB_DIALECT}://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}`,
 };
