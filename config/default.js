@@ -19,7 +19,7 @@ module.exports = {
       header: {
         typ: "access",
       },
-      audience: "https://yourdomain.com",
+      audience: "https://fawqdhakiun.com",
       issuer: "feathers",
       algorithm: "HS256",
       expiresIn: "1d",
